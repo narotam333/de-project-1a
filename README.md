@@ -1,6 +1,6 @@
 # de-project-1a
 
-Overview: Apache Airflow ETL pipeline with AWS S3
+Overview: Apache Airflow ETL pipeline using variables with AWS S3
 
 Steps executed:
 
