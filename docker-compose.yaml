@@ -59,6 +59,7 @@ x-airflow-common:
     AWS_ACCESS_KEY_ID: <>
     AWS_SECRET_ACCESS_KEY: <>
     AWS_DEFAULT_REGION: <>
+    AIRFLOW__CORE__SENSITIVE_VAR_CONN_NAMES: mask, hidden
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
   volumes:
     - ./dags:/opt/airflow/dags
@@ -242,16 +243,17 @@ services:
 
   airflow-cli:
     <<: *airflow-common
-    profiles:
-      - debug
+    #profiles:
+    #  - debug
+    entrypoint: tail -f /dev/null
     environment:
       <<: *airflow-common-env
       CONNECTION_CHECK_MAX_COUNT: "0"
     # Workaround for entrypoint issue. See: https://github.com/apache/airflow/issues/16252
-    command:
-      - bash
-      - -c
-      - airflow
+    #command:
+    #  - bash
+    #  - -c
+    #  - airflow
 
   flower:
     <<: *airflow-common

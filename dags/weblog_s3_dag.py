@@ -1,45 +1,27 @@
-#
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
-
 """
 ### ETL DAG Tutorial Documentation
-This ETL DAG is demonstrating an Extract -> Transform -> Load pipeline
+This ETL DAG is demonstrating an Extract -> Transform -> Load pipeline using Variables and runtime config
 """
-# [START tutorial]
 # [START import_module]
-import csv
-import json
-from textwrap import dedent
 
+# modules for documentation and datetime
+from textwrap import dedent
 import pendulum
 
 # The DAG object; we'll need this to instantiate a DAG
 from airflow import DAG
+
+# module to handle variables
 from airflow.models import Variable
 
 # Operators; we need this to operate!
 from airflow.operators.python import PythonOperator
 from airflow.operators.s3_file_transform_operator import S3FileTransformOperator
 
+# Python module to generate weblog data
 from project_modules.weblog_gen import generate_log
-from project_modules.weblog_file_con import generate_csv
 
+# Libraries/packages for AWS SDK
 import os
 import boto3
 from botocore.exceptions import ClientError
@@ -47,17 +29,13 @@ import logging
 
 # [END import_module]
 
-args = {
-    'retries': 2,
-}
-
 # [START instantiate_dag]
 with DAG(
     'weblog_s3_dag',
     # [START default_args]
     # These args will get passed on to each operator
     # You can override them on a per-task basis during operator initialization
-    default_args=args,
+    default_args={'retries': 2},
     # [END default_args]
     description='ETL DAG tutorial',
     schedule_interval=None,
@@ -84,10 +62,8 @@ with DAG(
     # [START s3_upload_file function]
     def s3_upload_file(**kwargs):
         ti = kwargs['ti']
-        bucketName = kwargs['bucketName']
-        inTaskId = kwargs['taskId']
-        inFileKey = kwargs['fileKey']
-        fileName = ti.xcom_pull(task_ids=inTaskId, key=inFileKey)
+        bucketName = kwargs['srcBucketName']    
+        fileName = ti.xcom_pull(task_ids='weblog', key='logFileName')
         objectName = os.path.basename(fileName)
 
         s3_client = boto3.client('s3')
@@ -98,9 +74,7 @@ with DAG(
         except ClientError as e:
             return False
         logging.info('Upload completed...')
-        ti.xcom_push(key='fileName', value=fileName)
         Variable.set("fileName", fileName)
-        #return fileName
     # [END s3_upload_file function]
     
 
@@ -120,7 +94,7 @@ with DAG(
     s3_upload_log_file_task = PythonOperator(
         task_id = 's3_upload_log_file',
         python_callable=s3_upload_file,
-        op_kwargs = {'bucketName': 'baalti123', 'taskId': 'weblog', 'fileKey': 'logFileName'},
+        op_kwargs = {'srcBucketName': Variable.get("srcBucketName")},
     )
     s3_upload_log_file_task.doc_md = dedent(
     """
@@ -130,18 +104,19 @@ with DAG(
 
     s3_transformation_task = S3FileTransformOperator(
         task_id='weblog_to_csv',
-        #source_s3_key='s3://'+'{{dag_run.conf["bucket_name"]}}'+''/'+Variable.get("fileName"),
-        source_s3_key='s3://'+Variable.get("bucket_secret_name")+'/'+Variable.get("fileName"),
-        dest_s3_key='s3://'+Variable.get("bucket_secret_name")+'/weblog_'+str((pendulum.now("Europe/London")).strftime("%G%m%d-%H%M%S"))+'.csv',
+        source_s3_key='s3://'+Variable.get("srcBucketName")+'/'+Variable.get("fileName"),
+        dest_s3_key='s3://'+'{{dag_run.conf["destBucketName"]}}'+'/weblog_'+str((pendulum.now("Europe/London")).strftime("%G%m%d-%H%M%S"))+'.csv',
         replace=False,
         transform_script='dags/project_modules/s3_transformation.py',
         #script_args=['<>'],
         source_aws_conn_id='s3conn',
         dest_aws_conn_id='s3conn',
     )
+    s3_transformation_task.doc_md = dedent(
     """
     Transforming weblog file into csv using S3 operator
     """
+    )
 
     create_weblog_task >> s3_upload_log_file_task >> s3_transformation_task
 

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# #import argparse
-from base64 import decode
 import sys
 import time
 
@@ -30,7 +28,6 @@ def generate_csv(logFileName, outFileName):
         userAgent = line.split('\"')[5]
     
         response = geocoder.ip(clientIP)
-        #response = DbIpCity.get(clientIP, api_key='free')
         location = response.country
 
         user_agent = parse(userAgent)
