@@ -1,13 +1,12 @@
 # de-project-1a
 
-Overview: Apache Airflow ETL pipeline using variables with AWS S3
+Topic: How to use variables and runtime config in Apache Airflow
 
 Steps executed:
-
-- ETL DAG and Tasks creation in Airflow
-- Data creation and processing using Python programming and AWS SDK
-- Data processing and storage on AWS S3 using S3FileTransformOperator
-- Pipeline Orchestrattion in Airflow
-- Data validation using AWS CLI
+- Write an ETL DAG and Task to generate weblog with dynamic filename 
+- Write a Task to upload weblog into AWS S3 and store dynamic file name using variables
+- Write a Task to process weblog file using S3FileTransformOperator, runtime config and variables 
+- Execute the DAG using runtime config and check variables values
+- Masking variable values in Airflow
 
 Technology Stack used: Docker, Airflow, Python, AWS SDK , AWS CLI and AWS S3
